@@ -3,8 +3,13 @@ import sys
 import logging
 import time
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from matplotlib.animation import PillowWriter
+
 import numpy as np
 from numpy import pi, sin, cos
+
+from matplotlib import animation
 
 
 if sys.version_info < (3, 9):
@@ -114,10 +119,35 @@ def Circle_Limit(vq, vd):
     #endif
     ### edit above
     """
-    vqdd = vd
-    vqdq = vq
+    vqd_d = vd
+    vqd_q = vq
 
-    return vqdd, vqdq
+    return vqd_q, vqd_d
+
+
+def update3_vect(frame):
+    # input is frame number
+    """
+    print(" ===")
+    print(frame)
+    print(line1[0]._x[0], line1[0]._y[0])  # starting pnt
+    print(len(line1[0]._x))
+    # x, y = line1[0].get_data()
+    # print(x, y)
+    line1[0]._x[0] = 6
+    line1[0]._y[0] = 0.5
+
+    return line1, # return the unpacked tuple
+    """
+    return
+    pass
+
+
+def update2_vect(frame):
+
+    return
+    pass
+
 
 # main function:
 # ------------------------.
@@ -163,24 +193,26 @@ if __name__ == '__main__':
     Ic= np.zeros(Nsim_pnts, dtype=float)
 
     ISCALE = (2**15-1) / IPEAK
-
+    direction = -1.0
+    run_num = " run #4"
     for j in range(0, Nsim_pnts):
         t_index[j] = j
-        rho_in[j] = 4.0*2.0*pi*FMECH*j*Tpwm
-        Ia[j] = IPEAK*IPEAK*sin(-rho_in[j] + 0.0)
-        Ib[j] = IPEAK*sin(-rho_in[j] + 2.0*np.pi/3.0)
-        Ic[j] = IPEAK*sin(-rho_in[j] + 4.0*np.pi/3.0)
+        rho_in[j] = 7.0*2.0*pi*FMECH*j*Tpwm
+        Ia[j] = IPEAK*sin(direction * rho_in[j] + 0.0)
+        Ib[j] = IPEAK*sin(direction * rho_in[j] + 2.0*np.pi/3.0)
+        Ic[j] = IPEAK*sin(direction * rho_in[j] + 4.0*np.pi/3.0)
 
         q1 = Clarke(ISCALE*Ia[j], ISCALE*Ib[j], ISCALE*Ic[j])
         ialpha[j]= q1[0]
         ibeta[j] = q1[1]
 
         q2 = Park(q1[0], q1[1], rho_in[j])
-        vqr[j] = 0 #q1[0]  # ============== check order q /r
-        vdr[j] = 2**15-1 #q1[1]
+        # input (ia,ib) output (id, iq)
+        vdr[j] = q2[0]/2
+        vqr[j] = q2[1]/2
 
-
-        q3 = MCM_Rev_Park(vqr[j], vdr[j], rho_in[j])
+        q3 = MCM_Rev_Park(vqr[j], vdr[j], direction * rho_in[j])
+        # input (vq, vd) output (vq, vd)
         valpha[j] = q3[0]
         vbeta[j] = q3[1]
 
@@ -188,35 +220,48 @@ if __name__ == '__main__':
 
 
     # all plotting starts below here:
+    t = rho_in
+
     # ----------------------------------------------------------------
-    plt.title('fig 1: ia, ib & ic :: 3-phase currents')
-    plt.plot(Ia)
-    plt.plot(Ib)
-    plt.plot(Ic)
+    # ia, ib and ic
+    fig1, ax = plt.subplots()
+    plt.title('fig 1: ia, ib & ic :: 3-phase currents'+ run_num)
+    line1  = plt.plot(rho_in, Ia, 'b')
+    line2  = plt.plot(rho_in, Ib, 'r')
+    line3  = plt.plot(rho_in, Ic, 'g')
     plt.legend(["Ia", "Ib", "Ic"], loc="lower left")
     plt.grid()
-    plt.show()
+    plt.xlabel("radians elec")
 
-    # ialpha and ibeta
-    plt.title('fig 2: ialpha, ibeta :: Clarke')
-    plt.plot(ialpha)
-    plt.plot(ibeta)
+    ani = animation.FuncAnimation(fig=fig1, func=update3_vect,
+                                  frames=40, interval=30)
+    plt.show()
+    writer = PillowWriter(fps=30)
+    ani.save("sine_example.gif", writer=writer)
+
+    # Clarke ialpha and ibeta
+    plt.title('fig 2: ialpha, ibeta :: Clarke'+ run_num)
+    plt.plot(rho_in, ialpha, rho_in, ibeta)
     plt.legend(["ialpha", "ibeta"], loc="lower left")
     plt.grid()
+    plt.xlabel("radians elec")
+
     plt.show()
 
-    # vqr and vdr
-    plt.title('fig 3: vqr, vdr :: Park')
-    plt.plot(vqr)
-    plt.plot(vdr)
+    # Park vqr and vdr
+    plt.title('fig 3: vqr, vdr :: Park'+ run_num)
+    plt.plot(rho_in, vqr, rho_in, vdr)
     plt.legend(["vqr", "vdr"], loc="lower left")
     plt.grid()
+    plt.xlabel("radians elec")
+
     plt.show()
 
-    # Reverse Park / Clarke
-    plt.title('fig 4: valpha, vbeta :: Rev Park-Clarke')
-    plt.plot(valpha)
-    plt.plot(vbeta)
+    # Reverse Park / Clarke valpha and vbeta
+    plt.title('fig 4: valpha, vbeta :: Rev Park-Clarke'+ run_num)
+    plt.plot(rho_in, valpha, rho_in, vbeta)
     plt.legend(["valpha", "vbeta"], loc="lower left")
     plt.grid()
+    plt.xlabel("radians elec")
+
     plt.show()
